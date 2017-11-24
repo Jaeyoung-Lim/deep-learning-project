@@ -17,8 +17,7 @@ include_directories(${RAI_COMMON_INCLUDE_DIR})
 find_package(raiGraphicsOpengl CONFIG REQUIRED)
 include_directories(${RAI_GRAPHICS_OPENGL_INCLUDE_DIRS})
 
-add_subdirectory(DIY)
-add_subdirectory(quadrotorwithTRPO)
-
 include_directories(Task/include)
 add_subdirectory(Task/src)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
