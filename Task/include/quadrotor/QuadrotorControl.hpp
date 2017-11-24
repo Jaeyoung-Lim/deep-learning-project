@@ -14,7 +14,7 @@
 #include "raiCommon/math/RAI_math.hpp"
 #include <rai/RAI_core>
 #include "raiGraphics/RAI_graphics.hpp"
-#include "rai/tasks/quadrotor/visualizer/Quadrotor_Visualizer.hpp"
+#include "quadrotor/visualizer/Quadrotor_Visualizer.hpp"
 #include "raiCommon/utils/StopWatch.hpp"
 
 #pragma once

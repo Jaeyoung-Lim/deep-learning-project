@@ -1,5 +1,5 @@
 
-#include "rai/tasks/quadrotor/visualizer/Quadrotor_Visualizer.hpp"
+#include "quadrotor/visualizer/Quadrotor_Visualizer.hpp"
 
 namespace rai {
 namespace Vis {
