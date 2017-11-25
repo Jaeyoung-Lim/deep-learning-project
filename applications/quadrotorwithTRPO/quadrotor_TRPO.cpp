@@ -1,22 +1,10 @@
-/*
- * master.cpp
- *
- *  Created on: Mar 7, 2016
- *      Author: jemin
- *
- *  Note"
- *	1. quadrotor task with AG tree (Hwangbo et. al. 2017)
- *	2. takes about an hour with gpu
- *
- */
-
 #include "rai/RAI_core"
 
 // Eigen
 #include <Eigen/Dense>
 
 // task
-#include "rai/tasks/quadrotor/QuadrotorControl.hpp"
+#include "quadrotor/QuadrotorControl.hpp"
 
 // noise model
 #include "rai/noiseModel/NormalDistributionNoise.hpp"

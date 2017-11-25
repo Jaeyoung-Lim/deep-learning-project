@@ -20,4 +20,5 @@ include_directories(${RAI_GRAPHICS_OPENGL_INCLUDE_DIRS})
 include_directories(Task/include)
 add_subdirectory(Task/src/quadrotor)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
+add_subdirectory(applications/quadrotorwithTRPO)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
