@@ -104,7 +104,7 @@ class QuadrotorControl : public Task<Dtype,
     double angle = 2.0 * std::acos(q_(0)); //Angle of rotation
 
     position = q_.segment<3>(4); //Position of quadrotor
-    load_position = q.tail(3);
+    load_position = q_.tail(3);
     R_ = Math::MathFunc::quatToRotMat(orientation); //Calculate rotation matrix
 
     v_I_ = u_.segment<3>(3); //linear velocity
@@ -142,13 +142,16 @@ class QuadrotorControl : public Task<Dtype,
     B_torque = genForce.segment(0, 3);
     B_force(2) = genForce(3);
 
-    loadDirection = load_position - position;
-    T_force = max(0.0, kp_tether * (loadDirection.norm() - tether_length) * loadDirection);
+    load_direction = load_position - position;
+    double kp_tether = 100.0;
+    double tether_length = 0.8;
+    T_force = std::max(0.0, kp_tether * (load_direction.norm() - tether_length)) * load_direction;
+    //TODO: Model inelastic collision with tether
 
     //Tether is Slack loadState(3) < LoadLength
     du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
     du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-    du_.tail(3) = gravity_ + T_force; // Load Acceleration( freefall )
+    du_.tail(3) = gravity_ + T_force; // Load Acceleration
 
     //Integrate states
     u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
@@ -240,7 +243,7 @@ class QuadrotorControl : public Task<Dtype,
     if (this->visualization_ON_) {
 
       updateVisualizationFrames();
-      visualizer_.drawWorld(visualizeFrame, position, orientation);
+      visualizer_.drawWorld(visualizeFrame, position, orientation, load_position);
       double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
       watch.start("sim");
       usleep(waitTime * 1e6);
@@ -267,7 +270,7 @@ class QuadrotorControl : public Task<Dtype,
     rn_.template sampleVectorInNormalUniform<3>(linVelF);
     Quaternion orientation;
     Position loadState;
-    Position position, load_position;
+    Position position;
     AngularVelocity angularVelocity;
     LinearVelocity linearVelocity;
 
@@ -314,8 +317,13 @@ class QuadrotorControl : public Task<Dtype,
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
 
-    load_state;
-    load_velocity;
+    Position load_state;
+    LinearVelocity load_velocity;
+
+    load_state << std::atan2(load_direction(0), -load_direction(2)), atan2(load_direction(1), -load_direction(2)), load_direction.norm;
+    load_velocity << std::cos(load_state(0))^2 * (q_(7)*u_(9)- u_(7)*q_(9))/std::sqrt(load_direction(3)^2), //TODO: derivative of alpha, theta
+                     std::cos(load_state(1))^2 * (q_(7)*u_(9)- u_(7)*q_(9))/std::sqrt(load_direction(3)^2),
+                     1 / load_state(3) * (u_.segment<3>(3) - u_.segment<3>(6)).norm();
 
     state << R_.col(0), R_.col(1), R_.col(2),
         q_.segment<3>(4) * positionScale_,
@@ -400,11 +408,11 @@ class QuadrotorControl : public Task<Dtype,
   Inertia inertia_;
   Inertia inertiaInv_;
   Quaternion orientation;
-  Position position;
+  Position position, load_position, load_direction;
   Force B_force, T_force;
   Torque B_torque;
   AngularVelocity w_I_, w_B_;
-  LinearVelocity v_I_;
+  LinearVelocity v_I_, vl_I_;
   RandomNumberGenerator<Dtype> rn_;
   EulerVector w_IXdt_;
   static rai_graphics::RAI_graphics graphics;

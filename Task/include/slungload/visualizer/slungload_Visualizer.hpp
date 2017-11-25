@@ -21,13 +21,13 @@ class Quadrotor_Visualizer {
   ~Quadrotor_Visualizer();
 
   void setTerrain(std::string fileName);
-  void drawWorld(HomogeneousTransform &visualizationPose, rai::Position &quadPos, rai::Quaternion &quadAtt);
+  void drawWorld(HomogeneousTransform &visualizationPose, rai::Position &quadPos, rai::Quaternion &quadAtt, rai::Position &loadPos);
   void reinitialize();
   rai_graphics::RAI_graphics* getGraphics();
 
 private:
   rai_graphics::RAI_graphics graphics;
-  rai_graphics::object::Sphere quadrotor;
+  rai_graphics::object::Quadrotor quadrotor;
   rai_graphics::object::Sphere Target;
   rai_graphics::object::Background background;
 

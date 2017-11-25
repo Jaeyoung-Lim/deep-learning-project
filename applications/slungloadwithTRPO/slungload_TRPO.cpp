@@ -16,7 +16,7 @@
 #include <Eigen/Dense>
 
 // task
-#include "rai/tasks/quadrotor/QuadrotorControl.hpp"
+#include "slungload/slungloadControl.hpp"
 
 // noise model
 #include "rai/noiseModel/NormalDistributionNoise.hpp"

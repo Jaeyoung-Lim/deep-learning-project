@@ -6,7 +6,7 @@ namespace Vis {
 
 Quadrotor_Visualizer::Quadrotor_Visualizer() :
     graphics(600, 450),
-    quadrotor(0.055),
+    quadrotor(0.3),
     Target(0.055),
     background("sky"){
 
@@ -43,7 +43,7 @@ Quadrotor_Visualizer::~Quadrotor_Visualizer() {
   graphics.end();
 }
 
-void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt) {
+void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt, Posittion &loadPos) {
   Eigen::Vector3d pos;
   Eigen::Vector3d end;
   HomogeneousTransform quadPose;

@@ -1,4 +1,4 @@
-add_executable(quadrotor_TRPO
+add_executable(slungload_TRPO
         ${RAI_TASK_SRC}
         slungload_TRPO.cpp)
 
