@@ -15,7 +15,7 @@ Quadrotor_Visualizer::Quadrotor_Visualizer() :
   defaultPose_.setIdentity();
   rai::Math::MathFunc::rotateHTabout_x_axis(defaultPose_, -M_PI_2);
 
-  graphics.addObject(&quadrotor);
+  graphics.addSuperObject(&quadrotor);
   graphics.addObject(&Target);
   graphics.addBackground(&background);
   //graphics.setBackgroundColor(1, 1, 1, 1);

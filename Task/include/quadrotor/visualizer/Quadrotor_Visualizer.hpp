@@ -4,7 +4,7 @@
 #include "raiGraphics/obj/Mesh.hpp"
 #include "raiGraphics/obj/Cylinder.hpp"
 #include "raiGraphics/obj/Sphere.hpp"
-//#include "raiGraphics/obj/Quadrotor.hpp"
+#include "raiGraphics/obj/Quadrotor.hpp"
 
 
 
