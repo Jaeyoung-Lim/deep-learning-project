@@ -1,13 +1,3 @@
-/*
- * master.cpp
- *
- *  Created on: Nov 25, 2017
- *      Author: Jaeyoung Lim
- *
- *  Note"
- *
- */
-
 #include "rai/RAI_core"
 
 // Eigen
@@ -24,7 +14,7 @@
 #include "rai/function/tensorflow/ValueFunction_TensorFlow.hpp"
 
 // algorithm
-#include "rai/algorithm/TRPO_gae.hpp"
+#include "rai/algorithm/PPO.hpp"
 
 // acquisitor
 #include "rai/experienceAcquisitor/TrajectoryAcquisitor_MultiThreadBatch.hpp"
@@ -67,8 +57,10 @@ int main(int argc, char *argv[]) {
   }
 
   ////////////////////////// Define Function approximations //////////
-  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 18 128 128 1", 1e-3);
-  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 18 128 128 4", 1e-3);
+//  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 18 128 128 1", 1e-3);
+//  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 18 128 128 4", 1e-3);
+  Vfunction_TensorFlow vfunction("gpu,0", "MLP", "relu 3e-3 18 128 128 1", 1e-3);
+  Policy_TensorFlow policy("gpu,0", "MLP", "relu 3e-3 18 128 128 4", 1e-3);
 
   ////////////////////////// Define Noise Model //////////////////////
   Dtype Stdev = 1;
@@ -78,13 +70,12 @@ int main(int argc, char *argv[]) {
   std::vector<Noise *> noiseVector;
   for (auto &noise : noiseVec)
     noiseVector.push_back(&noise);
-
   ////////////////////////// Acquisitor //////////////////////
   Acquisitor acquisitor;
 
   ////////////////////////// Algorithm ////////////////////////////////
-  rai::Algorithm::TRPO_gae<Dtype, StateDim, ActionDim>
-      algorithm(taskVector, &vfunction, &policy, noiseVector, &acquisitor, 0.97, 0, 0, 1);
+  rai::Algorithm::PPO<Dtype, StateDim, ActionDim>
+      algorithm(taskVector, &vfunction, &policy, noiseVector, &acquisitor, 0.97, 0, 0, 10, 30);
   algorithm.setVisualizationLevel(0);
 
   /////////////////////// Plotting properties ////////////////////////

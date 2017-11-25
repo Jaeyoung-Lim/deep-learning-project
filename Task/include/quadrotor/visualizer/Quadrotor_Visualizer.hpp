@@ -4,7 +4,7 @@
 #include "raiGraphics/obj/Mesh.hpp"
 #include "raiGraphics/obj/Cylinder.hpp"
 #include "raiGraphics/obj/Sphere.hpp"
-#include "raiGraphics/obj/Quadrotor.hpp"
+//#include "raiGraphics/obj/Quadrotor.hpp"
 
 
 
@@ -27,7 +27,7 @@ class Quadrotor_Visualizer {
 
 private:
   rai_graphics::RAI_graphics graphics;
-  rai_graphics::object::Sphere quadrotor;
+  rai_graphics::object::Quadrotor quadrotor;
   rai_graphics::object::Sphere Target;
   rai_graphics::object::Background background;
 

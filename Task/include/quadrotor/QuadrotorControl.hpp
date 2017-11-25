@@ -292,7 +292,7 @@ class QuadrotorControl : public Task<Dtype,
     q_ << orientation, position;
     u_ << angularVelocity, linearVelocity;
 
-    visualizer_.reinitialize();
+//    visualizer_.reinitialize();
   }
 
   void translate(Position& position) {
@@ -414,7 +414,7 @@ class QuadrotorControl : public Task<Dtype,
   RandomNumberGenerator<Dtype> rn_;
   EulerVector w_IXdt_;
   static rai_graphics::RAI_graphics graphics;
-  static rai_graphics::object::Quadrotor quadrotor;
+//  static rai_graphics::object::Quadrotor quadrotor;
   static rai_graphics::object::Sphere target;
   static Position targetPosition;
   double visualizationTime = 0;
