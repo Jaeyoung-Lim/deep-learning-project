@@ -27,7 +27,7 @@ class Quadrotor_Visualizer {
 
 private:
   rai_graphics::RAI_graphics graphics;
-  rai_graphics::object::Sphere quadrotor;
+  rai_graphics::object::Quadrotor quadrotor;
   rai_graphics::object::Sphere Target;
   rai_graphics::object::Background background;
 

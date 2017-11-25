@@ -6,7 +6,7 @@ namespace Vis {
 
 Quadrotor_Visualizer::Quadrotor_Visualizer() :
     graphics(600, 450),
-    quadrotor(0.055),
+    quadrotor(0.3),
     Target(0.055),
     background("sky"){
 
@@ -61,7 +61,7 @@ void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
   quadPose = quadPose * defaultPose_;
 
   quadrotor.setPose(quadPose);
-  //quadrotor.spinRotors();
+  quadrotor.spinRotors();
   Target.setPos(end);
 
 }
