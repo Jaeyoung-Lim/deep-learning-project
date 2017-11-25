@@ -1,5 +1,5 @@
 //
-// Created by jhwangbo on 30.11.16.
+// Created by Jaeyoung Lim on 25.11.17.
 //
 
 //#ifndef RAI_QUADROTORCONTROL_HPP
@@ -14,7 +14,7 @@
 #include "raiCommon/math/RAI_math.hpp"
 #include <rai/RAI_core>
 #include "raiGraphics/RAI_graphics.hpp"
-#include "quadrotor/visualizer/Quadrotor_Visualizer.hpp"
+#include "slungload/visualizer/slungload_Visualizer.hpp"
 #include "raiCommon/utils/StopWatch.hpp"
 
 #pragma once
@@ -103,11 +103,13 @@ class QuadrotorControl : public Task<Dtype,
     orientation = q_.head(4); //Orientation of quadrotor
     double angle = 2.0 * std::acos(q_(0)); //Angle of rotation
 
-    position = q_.tail(3); //Position of quadrotor
+    position = q_.segment<3>(4); //Position of quadrotor
+    load_position = q.tail(3);
     R_ = Math::MathFunc::quatToRotMat(orientation); //Calculate rotation matrix
 
-    v_I_ = u_.segment<3,1>(3,1); //linear velocity
+    v_I_ = u_.segment<3>(3); //linear velocity
     w_I_ = u_.head(3); //angular velocity
+    vl_I_ = u_.tail(3); //Load velocity
     w_B_ = R_.transpose() * w_I_; //body rates // TODO: u_.head(3) = w_I_
 
     //Control input from action
@@ -140,46 +142,24 @@ class QuadrotorControl : public Task<Dtype,
     B_torque = genForce.segment(0, 3);
     B_force(2) = genForce(3);
 
-    if (loadState(3) < loadLength) { //Hybrid Dynamics Guard
-      //Tether is Slack loadState(3) < LoadLength
-      du_.segment<3,1>(3,1) = (R_ * B_force) / mass_ + gravity_; // acceleration
-  //  w_B_ = R_.transpose() * u_.head(3); //body rates // TODO: u_.head(3) = w_I_
+    loadDirection = load_position - position;
+    T_force = max(0.0, kp_tether * (loadDirection.norm() - tether_length) * loadDirection);
 
-      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
+    //Tether is Slack loadState(3) < LoadLength
+    du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
+    du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
+    du_.tail(3) = gravity_ + T_force; // Load Acceleration( freefall )
 
-      du_.tail(3) = gravity_; // Load Acceleration freefall
-
-      //Integrate states
-      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
-      w_I_ = u_.head(3);
-      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-      Math::MathFunc::normalizeQuat(orientation);
-      q_.head(4) = orientation;
-      q_.segment<4,1>(3,1) = q_.segment<4,1>(3,1) + u_.segment<3,1>(3,1) * this->controlUpdate_dt_;
-      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Velocity
-      w_B_ = R_.transpose() * u_.head(3);
-
-    } else { //Slungload dynamics
-    //Tether is taut
-      du_.segment<3,1>(3,1) = (R_ * B_force) / mass_ + gravity_; // acceleration
-      //  w_B_ = R_.transpose() * u_.head(3); //body rates // TODO: u_.head(3) = w_I_
-
-      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-
-      du_.tail(3) = gravity_; // Load Acceleration
-
-      //Integrate states
-      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
-      w_I_ = u_.head(3);
-      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-      Math::MathFunc::normalizeQuat(orientation);
-      q_.head(4) = orientation;
-      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_;
-      w_B_ = R_.transpose() * u_.head(3);
-    }
-    // visualizer_.drawWorld(visualizeFrame, position, orientation);
+    //Integrate states
+    u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
+    w_I_ = u_.head(3);
+    w_IXdt_ = w_I_ * this->controlUpdate_dt_;
+    orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
+    Math::MathFunc::normalizeQuat(orientation);
+    q_.head(4) = orientation;
+    q_.segment<4>(3) = q_.segment<4>(3) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
+    q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
+    w_B_ = R_.transpose() * u_.head(3);
 
     if (std::isnan(orientation.norm())) {
       std::cout << "u_ " << u_.transpose() << std::endl;
@@ -199,29 +179,16 @@ class QuadrotorControl : public Task<Dtype,
 
     getState(state_tp1);
 
-//    costOUT = 0.004 * q_.tail(3).norm() +
-//        0.0002 * action_t.norm() +
-//        0.0003 * u_.head(3).norm() +
-//        0.0005 * u_.tail(3).norm();
-
     costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
         0.00005 * action_t.norm() +
         0.00005 * u_.head(3).norm() +
         0.00005 * u_.tail(3).norm();
 
-
-//    std::cout << "distance cost " << 0.004 * q_.tail(3).squaredNorm() << std::endl;
-//    std::cout << "actuation cost " << 0.0002 * action_t.squaredNorm() << std::endl;
-//    std::cout << "angular velocity cost " << 0.0003 * u_.head(3).squaredNorm() << std::endl;
-//    std::cout << "orientation cost " << 0.0005 * acos(q_(0)) * acos(q_(0)) << std::endl;
-//    if (this->isViolatingBoxConstraint(state_tp1))
-//      termType = TerminationType::timeout;
-
     // visualization
     if (this->visualization_ON_) {
 
       updateVisualizationFrames();
-      visualizer_.drawWorld(visualizeFrame, position, orientation);
+      visualizer_.drawWorld(visualizeFrame, position, orientation, load_position);
       double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
       watch.start("sim");
       usleep(waitTime * 1e6);
@@ -242,12 +209,6 @@ class QuadrotorControl : public Task<Dtype,
     double angle = 2.0 * std::acos(q_(0));
     position = q_.tail(3);
     R_ = Math::MathFunc::quatToRotMat(orientation);
-
-//    std::cout<<"genForce "<<genForce.transpose()<<std::endl;
-//    std::cout<<"angle "<<angle<<std::endl;
-//    std::cout<<"orientation.tail(3) / std::sin(angle) "<< orientation.tail(3) / std::sin(angle) <<std::endl;
-//    std::cout<<"proportioanl part "<< kp_rot * angle * ( R_.transpose() * orientation.tail(3) ) / std::sin(angle) <<std::endl;
-//    std::cout<<"diff part "<< kd_rot * ( R_.transpose() * u_.head(3) ) <<std::endl;
 
     du_.tail(3) = (R_ * B_force) / mass_ + gravity_;
     w_B_ = R_.transpose() * u_.head(3);
@@ -306,7 +267,7 @@ class QuadrotorControl : public Task<Dtype,
     rn_.template sampleVectorInNormalUniform<3>(linVelF);
     Quaternion orientation;
     Position loadState;
-    Position position;
+    Position position, load_position;
     AngularVelocity angularVelocity;
     LinearVelocity linearVelocity;
 
@@ -352,10 +313,16 @@ class QuadrotorControl : public Task<Dtype,
     orientation = q_.head(4);
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
+
+    load_state;
+    load_velocity;
+
     state << R_.col(0), R_.col(1), R_.col(2),
-        q_.tail(3) * positionScale_,
+        q_.segment<3>(4) * positionScale_,
+        load_state,
         u_.head(3) * angVelScale_,
-        u_.tail(3) * linVelScale_;
+        u_.tail(3) * linVelScale_,
+        load_velocity;
   };
 
   // Misc implementations
@@ -434,7 +401,7 @@ class QuadrotorControl : public Task<Dtype,
   Inertia inertiaInv_;
   Quaternion orientation;
   Position position;
-  Force B_force;
+  Force B_force, T_force;
   Torque B_torque;
   AngularVelocity w_I_, w_B_;
   LinearVelocity v_I_;
