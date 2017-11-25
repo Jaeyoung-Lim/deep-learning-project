@@ -1,10 +1,12 @@
 /*
  * master.cpp
  *
- *  Created on: Nov 25, 2017
- *      Author: Jaeyoung Lim
+ *  Created on: Mar 7, 2016
+ *      Author: jemin
  *
  *  Note"
+ *	1. quadrotor task with AG tree (Hwangbo et. al. 2017)
+ *	2. takes about an hour with gpu
  *
  */
 
