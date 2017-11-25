@@ -21,4 +21,7 @@ include_directories(Task/include)
 add_subdirectory(Task/src/quadrotor)
 
 add_subdirectory(applications/quadrotorwithTRPO)
+add_subdirectory(applications/quadrotorwithPPO)
+add_subdirectory(applications/DIY)
+
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
