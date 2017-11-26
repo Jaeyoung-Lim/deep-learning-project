@@ -9,7 +9,7 @@ slungload_Visualizer::slungload_Visualizer() :
     quadrotor(0.3),
     load(0.03),
     Target(0.055),
-    tether1(0.01, 1.0),
+    tether1(0.001, 0.3),
     tether2(0.001, 0.3),
     tether3(0.001, 0.3),
     background("sky"){
@@ -24,8 +24,8 @@ slungload_Visualizer::slungload_Visualizer() :
   graphics.addObject(&Target);
   graphics.addObject(&load);
   graphics.addObject(&tether1);
-  //graphics.addObject(&tether2);
-  //graphics.addObject(&tether3);
+  graphics.addObject(&tether2);
+  graphics.addObject(&tether3);
   graphics.addBackground(&background);
   //graphics.setBackgroundColor(1, 1, 1, 1);
 
@@ -98,9 +98,13 @@ void slungload_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
                   xAxis(2), yAxis(2), zAxis(2);
 
   tetherPose.topLeftCorner(3,3) = tetherRotmat;
-  tetherPose.topRightCorner(3,1) = loadPos;
-
+  tetherPose.topRightCorner(3,1) = quadPos + 1./3.*(loadPos - quadPos);
   tether1.setPose(tetherPose);
+  tetherPose.topRightCorner(3,1) = quadPos + 2./3.*(loadPos - quadPos);
+  tether2.setPose(tetherPose);
+  tetherPose.topRightCorner(3,1) = loadPos;
+  tether3.setPose(tetherPose);
+
   Target.setPos(end);
 
 }
