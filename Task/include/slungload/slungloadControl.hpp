@@ -152,7 +152,7 @@ class slungloadControl : public Task<Dtype,
       T_force = load_mass_ * mass_ *
                 (vl_I_.dot(direction) - v_I_.dot(direction))
                 / (load_mass_ + mass_) / this->controlUpdate_dt_ * direction;
-      T_force = T_force + load_mass_ * gravity_.dot(direction) * direction;
+      T_force = T_force + load_mass_ * (gravity_.dot(direction) * direction + du_.tail(3));
       load_direction = (tether_length /load_direction.norm())*load_direction;
       load_position = position + load_direction;
     }
