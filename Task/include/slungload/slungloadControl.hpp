@@ -152,7 +152,7 @@ class slungloadControl : public Task<Dtype,
       T_force = load_mass_ * mass_ *
                 (vl_I_.dot(direction) - v_I_.dot(direction))
                 / (load_mass_ + mass_) / this->controlUpdate_dt_ * direction;
-      T_force = T_force + load_mass_ * (gravity_.dot(direction) * direction + du_.tail(3));
+      T_force = T_force + load_mass_ * (gravity_ + du_.tail(3)).norm() * direction;
       load_direction = (tether_length /load_direction.norm())*load_direction;
       load_position = position + load_direction;
     }
@@ -186,6 +186,8 @@ class slungloadControl : public Task<Dtype,
     u_(3) = clip(u_(3), -5.0, 5.0);
     u_(4) = clip(u_(4), -5.0, 5.0);
     u_(5) = clip(u_(5), -5.0, 5.0);
+    u_(6) = clip(u_(6), -5.0, 5.0);
+    u_(7) = clip(u_(7), -5.0, 5.0);
 
     getState(state_tp1);
 
@@ -195,6 +197,7 @@ class slungloadControl : public Task<Dtype,
     costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
         0.00005 * action_t.norm() +
         0.00005 * u_.head(3).norm() +
+        0.00005 * u_.segment<3>(3).norm() +
         0.00005 * u_.tail(3).norm();
 
     // visualization
