@@ -39,7 +39,7 @@ slungload_Visualizer::slungload_Visualizer() :
   lprop.diff_light = diff;
   lprop.pos_light = pos;
   rai_graphics::CameraProp cprop;
-  cprop.toFollow = quadrotor.basePtr();
+  cprop.toFollow = &Target;
   cprop.relativeDist = relPos;
 
   graphics.setCameraProp(cprop);
