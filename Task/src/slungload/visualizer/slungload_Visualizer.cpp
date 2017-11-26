@@ -80,26 +80,27 @@ void slungload_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
 
   // by dh
   Position xAxis, yAxis;
-  RotationMatrix thetherRotmat;
+  RotationMatrix tetherRotmat;
 
   zAxis = loadDir;
-  if (zAxis.x() == 0.0 && zAxis.y() == 0.0)
+  if (zAxis(0) == 0.0 && zAxis(1) == 0.0)
     xAxis << 1.0, 0.0, 0.0;
   else
-    xAxis << zAxis.y(), -zAxis.x(), 0;
-  cross(zAxis, xAxis, yAxis);
+    xAxis << zAxis(1), -zAxis(0), 0;
+  yAxis = zAxis.cross(xAxis);
 
-  thetherRotmat << xAxis.x(), yAxis.x(), zAxis.x(),
-      xAxis.y(), yAxis.y(), zAxis.y(),
-      xAxis.z(), yAxis.z(), zAxis.z();
+  tetherRotmat << xAxis(0), yAxis(0), zAxis(0),
+                  xAxis(1), yAxis(1), zAxis(1),
+                  xAxis(2), yAxis(2), zAxis(2);
 
   tetherAtt(0) = std::sqrt((1 + loadDir.dot(zAxis))/2);
   tetherAtt.segment<3>(1) = std::sqrt(1 - tetherAtt(0)*tetherAtt(0)) * zAxis.cross(loadDir);
   tetherAtt.normalize();
-  tetherPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(tetherAtt);
+
+  tetherPose.topLeftCorner(3,3) = tetherRotmat;
   tetherPose.topRightCorner(3,1) = quadPos + 1.0 * ( loadPos - quadPos );
 
-  tether1.setPose(thetherRotmat);
+  tether1.setPose(tetherPose);
   Target.setPos(end);
 
 }
