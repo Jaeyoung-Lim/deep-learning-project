@@ -42,7 +42,7 @@ using Dtype = double;
 using rai::Task::ActionDim;
 using rai::Task::StateDim;
 using rai::Task::CommandDim;
-using Task = rai::Task::QuadrotorControl<Dtype>;
+using Task = rai::Task::slungloadControl<Dtype>;
 using Noise = rai::Noise::NormalDistributionNoise<Dtype, ActionDim>;
 using NoiseCovariance = Eigen::Matrix<Dtype, ActionDim, ActionDim>;
 using Policy_TensorFlow = rai::FuncApprox::StochasticPolicy_TensorFlow<Dtype, StateDim, ActionDim>;
@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
   }
 
   ////////////////////////// Define Function approximations //////////
-  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 18 128 128 1", 1e-3);
-  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 18 128 128 4", 1e-3);
+  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 24 128 128 1", 1e-3);
+  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 24 128 128 4", 1e-3);
 
   ////////////////////////// Define Noise Model //////////////////////
   Dtype Stdev = 1;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
   rai::Utils::Graph::FigPropPieChart propChart;
   rai::Utils::logger->addVariableToLog(1, "process time", "");
 
-  constexpr int loggingInterval = 50;
+  constexpr int loggingInterval = 1;
 
   ////////////////////////// Learning /////////////////////////////////
   for (int iterationNumber = 0; iterationNumber < 300; iterationNumber++) {

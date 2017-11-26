@@ -2,8 +2,8 @@
 // Created by Jaeyoung Lim on 25.11.17.
 //
 
-//#ifndef RAI_QUADROTORCONTROL_HPP
-//#define RAI_QUADROTORCONTROL_HPP
+//#ifndef RAI_SLUNGLOADCONTROL_HPP
+//#define RAI_SLUNGLOADCONTROL_HPP
 
 // custom inclusion- Modify for your task
 #include "rai/tasks/common/Task.hpp"
@@ -27,7 +27,7 @@ constexpr int ActionDim = 4;
 constexpr int CommandDim = 0;
 
 template<typename Dtype>
-class QuadrotorControl : public Task<Dtype,
+class slungloadControl : public Task<Dtype,
                                      StateDim,
                                      ActionDim,
                                      CommandDim> {
@@ -48,7 +48,7 @@ class QuadrotorControl : public Task<Dtype,
   using GeneralizedVelocity = Eigen::Matrix<double, 9, 1>;
   using GeneralizedAcceleration = Eigen::Matrix<double, 9, 1>;
 
-  QuadrotorControl() {
+  slungloadControl() {
 
     //// set default parameters
     this->valueAtTermination_ = 1.5;
@@ -74,13 +74,14 @@ class QuadrotorControl : public Task<Dtype,
 
     /////// adding constraints////////////////////
     State upperStateBound, lowerStateBound;
-    upperStateBound << 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
-                        3.0, 3.0, 3.0,
-                        5.0, 5.0, 5.0,
-                        6.0, 6.0, 6.0,
-                        6.0, 6.0, 6.0,
-                        6.0, 6.0, 6.0;
+    upperStateBound << 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, //Rotation Matrix
+                        3.0, 3.0, 3.0, //Quad Position
+                        M_PI*3./8., M_PI*3./8., tether_length, //Load State Position
+                        5.0, 5.0, 5.0, //Quad Angular Velocity
+                        6.0, 6.0, 6.0, //Quad Linear Velocity
+                        6.0, 6.0, 6.0; //Load State Velocity
     lowerStateBound = -upperStateBound;
+    lowerStateBound(15) = 0.3*tether_length;
     this->setBoxConstraints(lowerStateBound, upperStateBound);
     transsThrust2GenForce << 0, 0, length_, -length_,
         -length_, length_, 0, 0,
@@ -90,7 +91,7 @@ class QuadrotorControl : public Task<Dtype,
     targetPosition.setZero();
   }
 
-  ~QuadrotorControl() {
+  ~slungloadControl() {
   }
 
   void step(const Action &action_t,
@@ -143,15 +144,22 @@ class QuadrotorControl : public Task<Dtype,
     B_force(2) = genForce(3);
 
     load_direction = load_position - position;
-    double kp_tether = 100.0;
-    double tether_length = 0.8;
-    T_force = std::max(0.0, kp_tether * (load_direction.norm() - tether_length)) * load_direction;
-    //TODO: Model inelastic collision with tether
 
-    //Tether is Slack loadState(3) < LoadLength
+    if(load_direction.norm() < tether_length){
+      T_force = 0.0*load_direction;
+    } else{
+      Position direction = (1 /load_direction.norm())* load_direction;
+      T_force = load_mass_ * mass_ *
+                (vl_I_.dot(direction) - v_I_.dot(direction))
+                / (load_mass_ + mass_) / this->controlUpdate_dt_ * direction;
+      T_force = T_force + load_mass_ * gravity_.dot(direction) * direction;
+      load_direction = (tether_length /load_direction.norm())*load_direction;
+      load_position = position + load_direction;
+    }
+
     du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
     du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-    du_.tail(3) = gravity_ + T_force; // Load Acceleration
+    du_.tail(3) = gravity_ - T_force / load_mass_; // Load Acceleration
 
     //Integrate states
     u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
@@ -160,9 +168,8 @@ class QuadrotorControl : public Task<Dtype,
     orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
     Math::MathFunc::normalizeQuat(orientation);
     q_.head(4) = orientation;
-    q_.segment<4>(3) = q_.segment<4>(3) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
+    q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
     q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
-    w_B_ = R_.transpose() * u_.head(3);
 
     if (std::isnan(orientation.norm())) {
       std::cout << "u_ " << u_.transpose() << std::endl;
@@ -181,6 +188,9 @@ class QuadrotorControl : public Task<Dtype,
     u_(5) = clip(u_(5), -5.0, 5.0);
 
     getState(state_tp1);
+
+    if (this->isViolatingBoxConstraint(state_tp1))
+      termType = TerminationType::terminalState;
 
     costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
         0.00005 * action_t.norm() +
@@ -252,9 +262,6 @@ class QuadrotorControl : public Task<Dtype,
 
   }
 
-
-
-
   void changeTarget(Position& position){
     targetPosition = position;
   }
@@ -263,27 +270,32 @@ class QuadrotorControl : public Task<Dtype,
 
   void init() {
     /// initial state is random
-    double oriF[4], posiF[3], angVelF[3], linVelF[3];
+    double oriF[4], posiF[3], angVelF[3], linVelF[3], loadPosF[3],loadVelF[3], tetherLength;
     rn_.template sampleOnUnitSphere<4>(oriF);
     rn_.template sampleVectorInNormalUniform<3>(posiF);
     rn_.template sampleVectorInNormalUniform<3>(angVelF);
     rn_.template sampleVectorInNormalUniform<3>(linVelF);
+    rn_.template sampleInUnitSphere<3>(loadPosF);
+    rn_.template sampleVectorInNormalUniform<3>(loadVelF);
+
+
     Quaternion orientation;
-    Position loadState;
-    Position position;
+    Position position, loadPosition;
     AngularVelocity angularVelocity;
-    LinearVelocity linearVelocity;
+    LinearVelocity linearVelocity, loadVelocity;
 
     orientation << double(std::abs(oriF[0])), double(oriF[1]), double(oriF[2]), double(oriF[3]);
     rai::Math::MathFunc::normalizeQuat(orientation);
     position << double(posiF[0])*2., double(posiF[1])*2., double(posiF[2])*2.;
     angularVelocity << double(angVelF[0]), double(angVelF[1]), double(angVelF[2]);
     linearVelocity << double(linVelF[0]), double(linVelF[1]), double(linVelF[2]);
+    loadPosition << double(loadPosF[0])*tether_length, double(loadPosF[1])*tether_length, -double(std::abs(loadPosF[2]))*tether_length;
+    loadVelocity << double(loadVelF[0]), double(loadVelF[1]), double(loadVelF[2]);
 
-    q_ << orientation, position;
-    u_ << angularVelocity, linearVelocity;
+    load_direction = rai::Math::MathFunc::quatToRotMat(orientation)*loadPosition;
+    q_ << orientation, position, position + load_direction;
+    u_ << angularVelocity, linearVelocity, linearVelocity;
 
-    visualizer_.reinitialize();
   }
 
   void translate(Position& position) {
@@ -306,9 +318,10 @@ class QuadrotorControl : public Task<Dtype,
     R_.col(2) = stateT.segment(6, 3);
     orientation = Math::MathFunc::rotMatToQuat(R_);
     q_.head(4) = orientation;
-    q_.tail(3) = state.segment(9, 3) / positionScale_;
-    u_.head(3) = state.segment(12, 3) / angVelScale_;
-    u_.tail(3) = state.segment(15, 3) / linVelScale_;
+    q_.tail(3) = state.segment(9, 3) * positionScale_;
+    u_.head(3) = state.segment(12, 3) * angVelScale_;
+    u_.segment<3>(3) = state.segment(15, 3) * linVelScale_;
+    u_.tail(3) = state.tail(3) * linVelScale_;
   }
 
   void getState(State &state) {
@@ -317,20 +330,17 @@ class QuadrotorControl : public Task<Dtype,
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
 
-    Position load_state;
-    LinearVelocity load_velocity;
-
-    load_state << std::atan2(load_direction(0), -load_direction(2)), atan2(load_direction(1), -load_direction(2)), load_direction.norm;
-    load_velocity << std::cos(load_state(0))^2 * (q_(7)*u_(9)- u_(7)*q_(9))/std::sqrt(load_direction(3)^2), //TODO: derivative of alpha, theta
-                     std::cos(load_state(1))^2 * (q_(7)*u_(9)- u_(7)*q_(9))/std::sqrt(load_direction(3)^2),
-                     1 / load_state(3) * (u_.segment<3>(3) - u_.segment<3>(6)).norm();
-
+    Position load_state; // Parameterized load state
+    Position load_direction_b; //load direction in body frame
+    load_direction_b = rai::Math::MathFunc::quatToRotMat(orientation).transpose()*load_direction;
+    load_state << std::atan2(load_direction_b(0), -load_direction_b(2)), atan2(load_direction_b(1), -load_direction_b(2)), load_direction_b.norm();
+    
     state << R_.col(0), R_.col(1), R_.col(2),
         q_.segment<3>(4) * positionScale_,
-        load_state,
+        load_state, //parameterized load position
         u_.head(3) * angVelScale_,
-        u_.tail(3) * linVelScale_,
-        load_velocity;
+        u_.segment<3>(3) * linVelScale_,
+        u_.tail(3) * linVelScale_; //parameterized load velocity
   };
 
   // Misc implementations
@@ -371,6 +381,7 @@ class QuadrotorControl : public Task<Dtype,
     visualizer_.getGraphics()->images2Video();
   }
 
+
  private:
 
 
@@ -405,6 +416,8 @@ class QuadrotorControl : public Task<Dtype,
   Position comLocation_;
   double dragCoeff_ = 0.016;
   double mass_ = 0.665;
+  double tether_length = 1.0;
+  double load_mass_ = 0.08;
   Inertia inertia_;
   Inertia inertiaInv_;
   Quaternion orientation;
@@ -428,15 +441,14 @@ class QuadrotorControl : public Task<Dtype,
   //Visualization
   StopWatch watch;
   double realTimeRatio = 1;
-  static rai::Vis::Quadrotor_Visualizer visualizer_;
-
+  static rai::Vis::slungload_Visualizer visualizer_;
   HomogeneousTransform visualizeFrame;
 
 };
 }
 } /// namespaces
 template<typename Dtype>
-rai::Position rai::Task::QuadrotorControl<Dtype>::targetPosition;
+rai::Position rai::Task::slungloadControl<Dtype>::targetPosition;
 template<typename Dtype>
-rai::Vis::Quadrotor_Visualizer rai::Task::QuadrotorControl<Dtype>::visualizer_;
-//#endif //RAI_QUADROTORCONTROL_HPP
+rai::Vis::slungload_Visualizer rai::Task::slungloadControl<Dtype>::visualizer_;
+//#endif //RAI_SLUNGLOADCONTROL_HPP
