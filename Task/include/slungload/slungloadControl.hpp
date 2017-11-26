@@ -330,17 +330,18 @@ class slungloadControl : public Task<Dtype,
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
 
-    Position load_state; // Parameterized load state
-    Position load_direction_b; //load direction in body frame
+    Position load_state, load_direction_b; //load direction in body frame
+    LinearVelocity load_velocity;
     load_direction_b = rai::Math::MathFunc::quatToRotMat(orientation).transpose()*load_direction;
     load_state << std::atan2(load_direction_b(0), -load_direction_b(2)), atan2(load_direction_b(1), -load_direction_b(2)), load_direction_b.norm();
-    
+    load_velocity << std::atan2(load_direction_b(0), -load_direction_b(2)), atan2(load_direction_b(1), -load_direction_b(2)), load_direction_b.norm();
+
     state << R_.col(0), R_.col(1), R_.col(2),
         q_.segment<3>(4) * positionScale_,
         load_state, //parameterized load position
         u_.head(3) * angVelScale_,
         u_.segment<3>(3) * linVelScale_,
-        u_.tail(3) * linVelScale_; //parameterized load velocity
+        load_velocity * linVelScale_; //parameterized load velocity
   };
 
   // Misc implementations

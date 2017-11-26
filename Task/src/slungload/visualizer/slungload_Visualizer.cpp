@@ -9,9 +9,9 @@ slungload_Visualizer::slungload_Visualizer() :
     quadrotor(0.3),
     load(0.03),
     Target(0.055),
-    tether1(0.01, 0.3),
-    tether2(0.01, 0.3),
-    tether3(0.01, 0.3),
+    tether1(0.01, 1.0),
+    tether2(0.001, 0.3),
+    tether3(0.001, 0.3),
     background("sky"){
 
   Target.setColor({1.0, 0.0, 0.0});
@@ -23,6 +23,9 @@ slungload_Visualizer::slungload_Visualizer() :
   graphics.addSuperObject(&quadrotor);
   graphics.addObject(&Target);
   graphics.addObject(&load);
+  graphics.addObject(&tether1);
+  //graphics.addObject(&tether2);
+  //graphics.addObject(&tether3);
   graphics.addBackground(&background);
   //graphics.setBackgroundColor(1, 1, 1, 1);
 
@@ -36,7 +39,7 @@ slungload_Visualizer::slungload_Visualizer() :
   lprop.diff_light = diff;
   lprop.pos_light = pos;
   rai_graphics::CameraProp cprop;
-  cprop.toFollow = &Target;
+  cprop.toFollow = quadrotor.basePtr();
   cprop.relativeDist = relPos;
 
   graphics.setCameraProp(cprop);
@@ -58,16 +61,13 @@ void slungload_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
   Position zAxis, loadDir;
   zAxis << 0.0, 0.0, 1.0;
 
-
   rotmat = bodyPose.topLeftCorner(3, 3);
   pos = bodyPose.topRightCorner(3, 1);
 
   quadPose.setIdentity();
   quadPose.topRightCorner(3, 1) = quadPos;
   quadPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(quadAtt);
-
   end = rotmat * end;
-
   quadPose = quadPose * defaultPose_;
 
   quadrotor.setPose(quadPose);
@@ -75,21 +75,15 @@ void slungload_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
 
   load.setPos(loadPos);
 
-  loadDir = -1.0*(loadPos-quadPos)/(loadPos-quadPos).norm();
-
   tetherPose.setIdentity();
-//  tetherAtt.head(1) = std::sqrt((1 + loadDir.dot(zAxis)) / 2.0);
-//  tetherAtt.segment<3>(1) = loadDir.cross(zAxis);
-//  tetherAtt.normalize();
-//  tetherPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(tetherAtt);
-//
-//  tetherPose.topRightCorner(3,1) = quadPos + 1.0/6.0 * (loadPos-quadPos);
-  tether1.setPose(tetherPose);
-//  tetherPose.topRightCorner(3,1) = quadPos + 3.0/6.0 * (loadPos-quadPos);
-  tether2.setPose(tetherPose);
-//  tetherPose.topRightCorner(3,1) = quadPos + 5.0/6.0 * (loadPos-quadPos);
-  tether3.setPose(tetherPose);
+  loadDir = (quadPos - loadPos) / (quadPos - loadPos).norm();
+  tetherAtt(0) = std::sqrt((1 + loadDir.dot(zAxis))/2);
+  tetherAtt.segment<3>(1) = std::sqrt(1 - tetherAtt(0)*tetherAtt(0)) * zAxis.cross(loadDir);
+  tetherAtt.normalize();
+  tetherPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(tetherAtt);
+  tetherPose.topRightCorner(3,1) = quadPos + 1.0 * ( loadPos - quadPos );
 
+  tether1.setPose(tetherPose);
   Target.setPos(end);
 
 }
