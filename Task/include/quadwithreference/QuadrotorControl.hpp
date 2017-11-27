@@ -177,10 +177,10 @@ class QuadrotorControl : public Task<Dtype,
 
     getState(state_tp1);
 
-    costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
+    costOUT = 0.004 * std::sqrt((q_.tail(3) - qt_.tail(3)).norm()) +
         0.00005 * action_t.norm() +
-        0.00005 * u_.head(3).norm() +
-        0.00005 * u_.tail(3).norm();
+        0.00005 * (u_.head(3) - ut_.head(3)).norm() +
+        0.00005 * (u_.tail(3) - ut_.tail(3)).norm();
 
     // visualization
     if (this->visualization_ON_) {
@@ -265,14 +265,20 @@ class QuadrotorControl : public Task<Dtype,
   void init() {
     /// initial state is random
     double oriF[4], posiF[3], angVelF[3], linVelF[3];
+    double toriF[4], tposiF[3], tangVelF[3], tlinVelF[3];
     rn_.template sampleOnUnitSphere<4>(oriF);
     rn_.template sampleVectorInNormalUniform<3>(posiF);
     rn_.template sampleVectorInNormalUniform<3>(angVelF);
     rn_.template sampleVectorInNormalUniform<3>(linVelF);
-    Quaternion orientation;
-    Position position;
-    AngularVelocity angularVelocity;
-    LinearVelocity linearVelocity;
+    rn_.template sampleOnUnitSphere<4>(toriF);
+    rn_.template sampleVectorInNormalUniform<3>(tposiF);
+    rn_.template sampleVectorInNormalUniform<3>(tangVelF);
+    rn_.template sampleVectorInNormalUniform<3>(tlinVelF);
+
+    Quaternion orientation, torientation;
+    Position position, tposition;
+    AngularVelocity angularVelocity, tangularVelocity;
+    LinearVelocity linearVelocity, tlinearVelocity;
 
     orientation << double(std::abs(oriF[0])), double(oriF[1]), double(oriF[2]), double(oriF[3]);
     rai::Math::MathFunc::normalizeQuat(orientation);
@@ -280,10 +286,16 @@ class QuadrotorControl : public Task<Dtype,
     angularVelocity << double(angVelF[0]), double(angVelF[1]), double(angVelF[2]);
     linearVelocity << double(linVelF[0]), double(linVelF[1]), double(linVelF[2]);
 
+    torientation << double(std::abs(toriF[0])), double(toriF[1]), double(toriF[2]), double(toriF[3]);
+    rai::Math::MathFunc::normalizeQuat(torientation);
+    tposition << double(tposiF[0])*2., double(tposiF[1])*2., double(tposiF[2])*2.;
+    tangularVelocity << double(tangVelF[0]), double(tangVelF[1]), double(tangVelF[2]);
+    tlinearVelocity << double(tlinVelF[0]), double(tlinVelF[1]), double(tlinVelF[2]);
+
     q_ << orientation, position;
-    qt_ << orientation, position;
+    qt_ << torientation, tposition;
     u_ << angularVelocity, linearVelocity;
-    ut_ << angularVelocity, linearVelocity;
+    ut_ << tangularVelocity, tlinearVelocity;
 
   }
 
@@ -317,10 +329,19 @@ class QuadrotorControl : public Task<Dtype,
     orientation = q_.head(4);
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
+
+    orientation = qt_.head(4);
+    Math::MathFunc::normalizeQuat(orientation_t);
+    Rt_ = Math::MathFunc::quatToRotMat(orientation_t);
+
     state << R_.col(0), R_.col(1), R_.col(2),
         q_.tail(3) * positionScale_,
         u_.head(3) * angVelScale_,
-        u_.tail(3) * linVelScale_;
+        u_.tail(3) * linVelScale_,
+        Rt_.col(0), Rt_.col(1), Rt_.col(2),
+        qt_.tail(3) * positionScale_,
+        ut_.head(3) * angVelScale_,
+        ut_.tail(3) * linVelScale_;
   };
 
   // Misc implementations
@@ -381,11 +402,11 @@ class QuadrotorControl : public Task<Dtype,
     return double((T(0) < val) - (val < T(0)));
   }
 
-  GeneralizedCoordinate q_; // generalized state and velocity
-  GeneralizedVelocity u_;
+  GeneralizedCoordinate q_, qt_; // generalized state and velocity
+  GeneralizedVelocity u_, ut_;
   GeneralizedAcceleration du_;
 
-  RotationMatrix R_;
+  RotationMatrix R_, Rt_;
   LinearAcceleration gravity_;
 
   double orientationScale_, positionScale_, angVelScale_, linVelScale_;
@@ -397,7 +418,7 @@ class QuadrotorControl : public Task<Dtype,
   double mass_ = 0.665;
   Inertia inertia_;
   Inertia inertiaInv_;
-  Quaternion orientation;
+  Quaternion orientation, orientation_t;
   Position position;
   Force B_force;
   Torque B_torque;
