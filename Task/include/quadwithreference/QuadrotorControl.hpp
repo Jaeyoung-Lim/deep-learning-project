@@ -22,7 +22,7 @@
 namespace rai {
 namespace Task {
 
-constexpr int StateDim = 18;
+constexpr int StateDim = 36;
 constexpr int ActionDim = 4;
 constexpr int CommandDim = 0;
 
@@ -75,6 +75,10 @@ class QuadrotorControl : public Task<Dtype,
     /////// adding constraints////////////////////
     State upperStateBound, lowerStateBound;
     upperStateBound << 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+                        3.0, 3.0, 3.0,
+                        5.0, 5.0, 5.0,
+                        6.0, 6.0, 6.0,
+                        2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
                         3.0, 3.0, 3.0,
                         5.0, 5.0, 5.0,
                         6.0, 6.0, 6.0;
@@ -173,23 +177,10 @@ class QuadrotorControl : public Task<Dtype,
 
     getState(state_tp1);
 
-//    costOUT = 0.004 * q_.tail(3).norm() +
-//        0.0002 * action_t.norm() +
-//        0.0003 * u_.head(3).norm() +
-//        0.0005 * u_.tail(3).norm();
-
     costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
         0.00005 * action_t.norm() +
         0.00005 * u_.head(3).norm() +
         0.00005 * u_.tail(3).norm();
-
-
-//    std::cout << "distance cost " << 0.004 * q_.tail(3).squaredNorm() << std::endl;
-//    std::cout << "actuation cost " << 0.0002 * action_t.squaredNorm() << std::endl;
-//    std::cout << "angular velocity cost " << 0.0003 * u_.head(3).squaredNorm() << std::endl;
-//    std::cout << "orientation cost " << 0.0005 * acos(q_(0)) * acos(q_(0)) << std::endl;
-//    if (this->isViolatingBoxConstraint(state_tp1))
-//      termType = TerminationType::timeout;
 
     // visualization
     if (this->visualization_ON_) {
@@ -290,9 +281,10 @@ class QuadrotorControl : public Task<Dtype,
     linearVelocity << double(linVelF[0]), double(linVelF[1]), double(linVelF[2]);
 
     q_ << orientation, position;
+    qt_ << orientation, position;
     u_ << angularVelocity, linearVelocity;
+    ut_ << angularVelocity, linearVelocity;
 
-//    visualizer_.reinitialize();
   }
 
   void translate(Position& position) {

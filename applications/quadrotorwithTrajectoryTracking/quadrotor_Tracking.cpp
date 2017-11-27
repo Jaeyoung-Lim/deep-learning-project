@@ -14,7 +14,7 @@
 #include <Eigen/Dense>
 
 // task
-#include "quadrotor/QuadrotorControl.hpp"
+#include "quadwithreference/QuadrotorControl.hpp"
 
 // noise model
 #include "rai/noiseModel/NormalDistributionNoise.hpp"

@@ -29,7 +29,7 @@ add_subdirectory(applications/slungloadwithTRPO)
 add_subdirectory(applications/DIY)
 
 add_subdirectory(Task/src/quadwithreference)
-add_subdirectory(applications/quadrotorTrajectoryTracking)
+add_subdirectory(applications/quadrotorwithTrajectoryTracking)
 
 
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
