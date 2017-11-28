@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
   }
 
   ////////////////////////// Define Function approximations //////////
-  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 18 128 128 1", 1e-3);
-  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 18 128 128 4", 1e-3);
+  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 33 128 128 1", 1e-3);
+  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 33 128 128 4", 1e-3);
 
   ////////////////////////// Define Noise Model //////////////////////
   Dtype Stdev = 1;

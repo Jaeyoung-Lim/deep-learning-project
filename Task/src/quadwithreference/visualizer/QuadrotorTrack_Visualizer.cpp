@@ -1,12 +1,13 @@
 
-#include "quadrotor/visualizer/Quadrotor_Visualizer.hpp"
+#include "quadwithreference/visualizer/QuadrotorTrack_Visualizer.hpp"
 
 namespace rai {
 namespace Vis {
 
-Quadrotor_Visualizer::Quadrotor_Visualizer() :
+QuadrotorTrack_Visualizer::QuadrotorTrack_Visualizer() :
     graphics(600, 450),
     quadrotor(0.3),
+    tquadrotor(0.3),
     Target(0.055),
     background("sky"){
 
@@ -16,6 +17,7 @@ Quadrotor_Visualizer::Quadrotor_Visualizer() :
   rai::Math::MathFunc::rotateHTabout_x_axis(defaultPose_, -M_PI_2);
 
   graphics.addSuperObject(&quadrotor);
+  graphics.addSuperObject(&tquadrotor);
   graphics.addObject(&Target);
   graphics.addBackground(&background);
   //graphics.setBackgroundColor(1, 1, 1, 1);
@@ -39,14 +41,14 @@ Quadrotor_Visualizer::Quadrotor_Visualizer() :
 
 }
 
-Quadrotor_Visualizer::~Quadrotor_Visualizer() {
+QuadrotorTrack_Visualizer::~QuadrotorTrack_Visualizer() {
   graphics.end();
 }
 
-void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt) {
+void QuadrotorTrack_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt, Position &tquadPos, Quaternion &tquadAtt) {
   Eigen::Vector3d pos;
   Eigen::Vector3d end;
-  HomogeneousTransform quadPose;
+  HomogeneousTransform quadPose, tquadPose;
   RotationMatrix rotmat;
 
   rotmat = bodyPose.topLeftCorner(3, 3);
@@ -56,17 +58,23 @@ void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
   quadPose.topRightCorner(3, 1) = quadPos;
   quadPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(quadAtt);
 
+  tquadPose.setIdentity();
+  tquadPose.topRightCorner(3, 1) = tquadPos;
+  tquadPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(tquadAtt);
+
   end = rotmat * end;
 
   quadPose = quadPose * defaultPose_;
+  tquadPose = tquadPose * defaultPose_;
 
   quadrotor.setPose(quadPose);
   quadrotor.spinRotors();
+  tquadrotor.setPose(tquadPose);
   Target.setPos(end);
 
 }
 
-rai_graphics::RAI_graphics *Quadrotor_Visualizer::getGraphics() {
+rai_graphics::RAI_graphics *QuadrotorTrack_Visualizer::getGraphics() {
   return &graphics;
 }
 }

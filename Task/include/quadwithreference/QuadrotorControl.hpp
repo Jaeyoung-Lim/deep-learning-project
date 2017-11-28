@@ -14,7 +14,7 @@
 #include "raiCommon/math/RAI_math.hpp"
 #include <rai/RAI_core>
 #include "raiGraphics/RAI_graphics.hpp"
-#include "quadrotor/visualizer/Quadrotor_Visualizer.hpp"
+#include "quadwithreference/visualizer/QuadrotorTrack_Visualizer.hpp"
 #include "raiCommon/utils/StopWatch.hpp"
 
 #pragma once
@@ -22,7 +22,7 @@
 namespace rai {
 namespace Task {
 
-constexpr int StateDim = 36;
+constexpr int StateDim = 33;
 constexpr int ActionDim = 4;
 constexpr int CommandDim = 0;
 
@@ -71,6 +71,7 @@ class QuadrotorControl : public Task<Dtype,
     positionScale_ = 0.5;
     angVelScale_ = 0.15;
     linVelScale_ = 0.5;
+    position_t << 0.0, 0.0, 0.0;
 
     /////// adding constraints////////////////////
     State upperStateBound, lowerStateBound;
@@ -79,7 +80,6 @@ class QuadrotorControl : public Task<Dtype,
                         5.0, 5.0, 5.0,
                         6.0, 6.0, 6.0,
                         2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
-                        3.0, 3.0, 3.0,
                         5.0, 5.0, 5.0,
                         6.0, 6.0, 6.0;
     lowerStateBound = -upperStateBound;
@@ -100,9 +100,9 @@ class QuadrotorControl : public Task<Dtype,
             TerminationType &termType,
             Dtype &costOUT) {
 
-
     //Get current state from q_, u_
     orientation = q_.head(4); //Orientation of quadrotor
+    orientation_t = qt_.head(4);
     double angle = 2.0 * std::acos(q_(0)); //Angle of rotation
 
     position = q_.tail(3); //Position of quadrotor
@@ -177,7 +177,7 @@ class QuadrotorControl : public Task<Dtype,
 
     getState(state_tp1);
 
-    costOUT = 0.004 * std::sqrt((q_.tail(3) - qt_.tail(3)).norm()) +
+    costOUT = 0.004 * std::sqrt((q_ - qt_).norm()) +
         0.00005 * action_t.norm() +
         0.00005 * (u_.head(3) - ut_.head(3)).norm() +
         0.00005 * (u_.tail(3) - ut_.tail(3)).norm();
@@ -186,75 +186,13 @@ class QuadrotorControl : public Task<Dtype,
     if (this->visualization_ON_) {
 
       updateVisualizationFrames();
-      visualizer_.drawWorld(visualizeFrame, position, orientation);
+      visualizer_.drawWorld(visualizeFrame, position, orientation, position_t, orientation_t);
       double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
       watch.start("sim");
       usleep(waitTime * 1e6);
 
     }
   }
-
-
-  void stepSim(const Action &action_t) {
-    Action thrust = action_t.array().square() * 8.5486e-6;
-    thrust = thrust.array().cwiseMax(1e-8);
-    Eigen::Matrix<Dtype, 4, 1> genforce;
-    genforce = transsThrust2GenForce * thrust;
-    B_torque = genforce.segment(0,3);
-    B_force << 0.0, 0.0, genforce(3);
-
-    orientation = q_.head(4);
-    double angle = 2.0 * std::acos(q_(0));
-    position = q_.tail(3);
-    R_ = Math::MathFunc::quatToRotMat(orientation);
-
-//    std::cout<<"genForce "<<genForce.transpose()<<std::endl;
-//    std::cout<<"angle "<<angle<<std::endl;
-//    std::cout<<"orientation.tail(3) / std::sin(angle) "<< orientation.tail(3) / std::sin(angle) <<std::endl;
-//    std::cout<<"proportioanl part "<< kp_rot * angle * ( R_.transpose() * orientation.tail(3) ) / std::sin(angle) <<std::endl;
-//    std::cout<<"diff part "<< kd_rot * ( R_.transpose() * u_.head(3) ) <<std::endl;
-
-    du_.tail(3) = (R_ * B_force) / mass_ + gravity_;
-    w_B_ = R_.transpose() * u_.head(3);
-
-    /// compute in body coordinate and transform it to world coordinate
-//    B_torque += comLocation_.cross(mass_ * R_.transpose() * gravity_);
-    du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_)));
-
-    u_ += du_ * this->controlUpdate_dt_;
-
-    w_I_ = u_.head(3);
-    w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-    orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-    Math::MathFunc::normalizeQuat(orientation);
-    q_.head(4) = orientation;
-    q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_;
-    w_B_ = R_.transpose() * u_.head(3);
-
-    if ( std::isnan(orientation.norm()) ) {
-      std::cout << "u_ " << u_.transpose() << std::endl;
-      std::cout << "du_ " << du_.transpose() << std::endl;
-      std::cout << "B_torque " << B_torque.transpose() << std::endl;
-      std::cout << "orientation " << orientation.transpose() << std::endl;
-      std::cout << "state_tp1 " << q_.transpose() << std::endl;
-      std::cout << "action_t " << action_t.transpose() << std::endl;
-    }
-    // visualization
-
-    if (this->visualization_ON_) {
-
-      updateVisualizationFrames();
-      visualizer_.drawWorld(visualizeFrame, position, orientation);
-      double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
-      watch.start("sim");
-      usleep(waitTime * 1e6);
-
-    }
-
-  }
-
-
-
 
   void changeTarget(Position& position){
     targetPosition = position;
@@ -265,13 +203,12 @@ class QuadrotorControl : public Task<Dtype,
   void init() {
     /// initial state is random
     double oriF[4], posiF[3], angVelF[3], linVelF[3];
-    double toriF[4], tposiF[3], tangVelF[3], tlinVelF[3];
+    double toriF[4], tangVelF[3], tlinVelF[3];
     rn_.template sampleOnUnitSphere<4>(oriF);
     rn_.template sampleVectorInNormalUniform<3>(posiF);
     rn_.template sampleVectorInNormalUniform<3>(angVelF);
     rn_.template sampleVectorInNormalUniform<3>(linVelF);
     rn_.template sampleOnUnitSphere<4>(toriF);
-    rn_.template sampleVectorInNormalUniform<3>(tposiF);
     rn_.template sampleVectorInNormalUniform<3>(tangVelF);
     rn_.template sampleVectorInNormalUniform<3>(tlinVelF);
 
@@ -288,7 +225,7 @@ class QuadrotorControl : public Task<Dtype,
 
     torientation << double(std::abs(toriF[0])), double(toriF[1]), double(toriF[2]), double(toriF[3]);
     rai::Math::MathFunc::normalizeQuat(torientation);
-    tposition << double(tposiF[0])*2., double(tposiF[1])*2., double(tposiF[2])*2.;
+    tposition << 0.0, 0.0, 0.0;
     tangularVelocity << double(tangVelF[0]), double(tangVelF[1]), double(tangVelF[2]);
     tlinearVelocity << double(tlinVelF[0]), double(tlinVelF[1]), double(tlinVelF[2]);
 
@@ -296,7 +233,6 @@ class QuadrotorControl : public Task<Dtype,
     qt_ << torientation, tposition;
     u_ << angularVelocity, linearVelocity;
     ut_ << tangularVelocity, tlinearVelocity;
-
   }
 
   void translate(Position& position) {
@@ -330,7 +266,7 @@ class QuadrotorControl : public Task<Dtype,
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
 
-    orientation = qt_.head(4);
+    orientation_t = qt_.head(4);
     Math::MathFunc::normalizeQuat(orientation_t);
     Rt_ = Math::MathFunc::quatToRotMat(orientation_t);
 
@@ -339,7 +275,6 @@ class QuadrotorControl : public Task<Dtype,
         u_.head(3) * angVelScale_,
         u_.tail(3) * linVelScale_,
         Rt_.col(0), Rt_.col(1), Rt_.col(2),
-        qt_.tail(3) * positionScale_,
         ut_.head(3) * angVelScale_,
         ut_.tail(3) * linVelScale_;
   };
@@ -419,7 +354,7 @@ class QuadrotorControl : public Task<Dtype,
   Inertia inertia_;
   Inertia inertiaInv_;
   Quaternion orientation, orientation_t;
-  Position position;
+  Position position, position_t;
   Force B_force;
   Torque B_torque;
   AngularVelocity w_I_, w_B_;
@@ -439,7 +374,7 @@ class QuadrotorControl : public Task<Dtype,
   //Visualization
   StopWatch watch;
   double realTimeRatio = 1;
-  static rai::Vis::Quadrotor_Visualizer visualizer_;
+  static rai::Vis::QuadrotorTrack_Visualizer visualizer_;
 
   HomogeneousTransform visualizeFrame;
 
@@ -449,5 +384,5 @@ class QuadrotorControl : public Task<Dtype,
 template<typename Dtype>
 rai::Position rai::Task::QuadrotorControl<Dtype>::targetPosition;
 template<typename Dtype>
-rai::Vis::Quadrotor_Visualizer rai::Task::QuadrotorControl<Dtype>::visualizer_;
+rai::Vis::QuadrotorTrack_Visualizer rai::Task::QuadrotorControl<Dtype>::visualizer_;
 //#endif //RAI_QUADROTORCONTROL_HPP
