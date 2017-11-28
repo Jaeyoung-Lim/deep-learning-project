@@ -177,7 +177,8 @@ class QuadrotorControl : public Task<Dtype,
 
     getState(state_tp1);
 
-    costOUT = 0.004 * std::sqrt((q_ - qt_).norm()) +
+    costOUT = 0.004 * std::sqrt((q_.head(4) - qt_.head(4)).norm()) +
+        0.004 * std::sqrt((q_.tail(3) - qt_.tail(3)).norm()) +
         0.00005 * action_t.norm() +
         0.00005 * (u_.head(3) - ut_.head(3)).norm() +
         0.00005 * (u_.tail(3) - ut_.tail(3)).norm();
