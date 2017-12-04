@@ -144,32 +144,50 @@ class slungloadControl : public Task<Dtype,
     B_force(2) = genForce(3);
 
     load_direction = load_position - position;
+    Position direction = (1 /load_direction.norm())* load_direction;
+    T_force = load_mass_ * (gravity_ + du_.tail(3)).norm() * direction;
 
     if(load_direction.norm() < tether_length){
-      T_force = 0.0*load_direction;
-    } else{
-      Position direction = (1 /load_direction.norm())* load_direction;
-      T_force = load_mass_ * mass_ *
-                (vl_I_.dot(direction) - v_I_.dot(direction))
-                / (load_mass_ + mass_) / this->controlUpdate_dt_ * direction;
-      T_force = T_force + load_mass_ * (gravity_ + du_.tail(3)).norm() * direction;
-      load_direction = (tether_length /load_direction.norm())*load_direction;
-      load_position = position + load_direction;
+      T_force = 0.0*T_force;
+
+      du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_; // quadrotor acceleration
+      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
+      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
+      du_.tail(3) = gravity_; // Load Acceleration
+
+      //Integrate states
+      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
+
+      w_I_ = u_.head(3);
+      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
+      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
+      Math::MathFunc::normalizeQuat(orientation);
+      q_.head(4) = orientation;
+      q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
+      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
+
+    } else {
+      du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
+      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
+      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
+      du_.tail(3) = gravity_ - T_force / load_mass_ - 0.01*u_.tail(3).norm()*u_.tail(3)/u_.segment<3>(6).norm(); // Load Acceleration
+
+      //Integrate states
+      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
+
+      //Velocity Constraint
+
+      w_I_ = u_.head(3);
+      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
+      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
+      Math::MathFunc::normalizeQuat(orientation);
+      q_.head(4) = orientation;
+      q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
+      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
+
+      q_.tail(3) = q_.segment<3>(4) + tether_length * (q_.tail(3) - q_.segment<3>(4))/(q_.tail(3) - q_.segment<3>(4)).norm(); // Position Constraint
     }
 
-    du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
-    du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-    du_.tail(3) = gravity_ - T_force / load_mass_; // Load Acceleration
-
-    //Integrate states
-    u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
-    w_I_ = u_.head(3);
-    w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-    orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-    Math::MathFunc::normalizeQuat(orientation);
-    q_.head(4) = orientation;
-    q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
-    q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
 
     if (std::isnan(orientation.norm())) {
       std::cout << "u_ " << u_.transpose() << std::endl;
@@ -296,6 +314,7 @@ class slungloadControl : public Task<Dtype,
     loadVelocity << double(loadVelF[0]), double(loadVelF[1]), double(loadVelF[2]);
 
     load_direction = rai::Math::MathFunc::quatToRotMat(orientation)*loadPosition;
+
     q_ << orientation, position, position + load_direction;
     u_ << angularVelocity, linearVelocity, linearVelocity;
 
@@ -316,15 +335,24 @@ class slungloadControl : public Task<Dtype,
 
   void initTo(const State &state) {
     State stateT = state;
+    Position load_state_v;
+
     R_.col(0) = stateT.segment(0, 3);
     R_.col(1) = stateT.segment(3, 3);
     R_.col(2) = stateT.segment(6, 3);
     orientation = Math::MathFunc::rotMatToQuat(R_);
     q_.head(4) = orientation;
-    q_.tail(3) = state.segment(9, 3) * positionScale_;
-    u_.head(3) = state.segment(12, 3) * angVelScale_;
-    u_.segment<3>(3) = state.segment(15, 3) * linVelScale_;
+    q_.segment<3>(4) = state.segment(9, 3) / positionScale_;
+
+
+    q_.tail(3) << load_state_v(2)*sin(load_state_v(0)),
+                  load_state_v(2)*sin(load_state_v(1)),
+                  -load_state_v(2)*std::sqrt(1 - sin(load_state_v(0))*sin(load_state_v(0)) - sin(load_state_v(1)) *sin(load_state_v(1)));
+
+    u_.head(3) = state.segment(12, 3) / angVelScale_;
+    u_.segment<3>(3) = state.segment(15, 3) / linVelScale_;
     u_.tail(3) = state.tail(3) * linVelScale_;
+    du_ = 0.0*du_;
   }
 
   void getState(State &state) {
@@ -333,11 +361,12 @@ class slungloadControl : public Task<Dtype,
     Math::MathFunc::normalizeQuat(orientation);
     R_ = Math::MathFunc::quatToRotMat(orientation);
 
-    Position load_state, load_direction_b; //load direction in body frame
+    Position load_state, load_direction_b, load_direction_i; //load direction in body frame
     LinearVelocity load_velocity;
-    load_direction_b = rai::Math::MathFunc::quatToRotMat(orientation).transpose()*load_direction;
-    load_state << std::atan2(load_direction_b(0), -load_direction_b(2)), atan2(load_direction_b(1), -load_direction_b(2)), load_direction_b.norm();
-    load_velocity << std::atan2(load_direction_b(0), -load_direction_b(2)), atan2(load_direction_b(1), -load_direction_b(2)), load_direction_b.norm();
+    load_direction_i = q_.segment<3>(7) - q_.segment<3>(4);
+    load_direction_b = rai::Math::MathFunc::quatToRotMat(orientation).transpose()*load_direction_i;
+    load_state << std::asin(load_direction_b(0)/load_direction_b.norm()), std::asin(load_direction_b(1)/load_direction_b.norm()), load_direction_b.norm();
+    load_velocity = u_.tail(3);
 
     state << R_.col(0), R_.col(1), R_.col(2),
         q_.segment<3>(4) * positionScale_,

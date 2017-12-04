@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
   rai::Utils::Graph::FigPropPieChart propChart;
   rai::Utils::logger->addVariableToLog(1, "process time", "");
 
-  constexpr int loggingInterval = 1;
+  constexpr int loggingInterval = 100;
 
   ////////////////////////// Learning /////////////////////////////////
   for (int iterationNumber = 0; iterationNumber < 300; iterationNumber++) {
