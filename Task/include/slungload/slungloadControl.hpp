@@ -293,9 +293,9 @@ class slungloadControl : public Task<Dtype,
     /// initial state is random
     double oriF[4], posiF[3], angVelF[3], linVelF[3], loadPosF[3],loadVelF[3], tetherLength;
     rn_.template sampleOnUnitSphere<4>(oriF);
-    rn_.template sampleVectorInNormalUniform<3>(posiF);
-    rn_.template sampleVectorInNormalUniform<3>(angVelF);
-    rn_.template sampleVectorInNormalUniform<3>(linVelF);
+    rn_.template sampleInUnitSphere<3>(posiF);
+    rn_.template sampleInUnitSphere<3>(angVelF);
+    rn_.template sampleInUnitSphere<3>(linVelF);
     rn_.template sampleInUnitSphere<3>(loadPosF);
     rn_.template sampleVectorInNormalUniform<3>(loadVelF);
 

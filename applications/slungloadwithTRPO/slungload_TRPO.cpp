@@ -65,12 +65,13 @@ int main(int argc, char *argv[]) {
     task.setControlUpdate_dt(0.01);
     task.setDiscountFactor(0.99);
     task.setTimeLimitPerEpisode(5.0);
+    task.setValueAtTerminalState(1.5);
     taskVector.push_back(&task);
   }
 
   ////////////////////////// Define Function approximations //////////
-  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 24 128 128 1", 1e-3);
-  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 24 128 128 4", 1e-3);
+  Vfunction_TensorFlow vfunction("gpu,0", "MLP", "tanh 3e-3 24 128 128 1", 1e-3);
+  Policy_TensorFlow policy("gpu,0", "MLP", "tanh 3e-3 24 128 128 4", 1e-3);
 
   ////////////////////////// Define Noise Model //////////////////////
   Dtype Stdev = 1;
@@ -99,14 +100,14 @@ int main(int argc, char *argv[]) {
   constexpr int loggingInterval = 100;
 
   ////////////////////////// Learning /////////////////////////////////
-  for (int iterationNumber = 0; iterationNumber < 300; iterationNumber++) {
+  for (int iterationNumber = 0; iterationNumber < 2000; iterationNumber++) {
     rai::Utils::logger->appendData("process time", rai::Utils::timer->getGlobalElapsedTimeInMin());
     LOG(INFO) << iterationNumber << "th loop";
     if (iterationNumber % loggingInterval == 0) {
       algorithm.setVisualizationLevel(1);
       taskVector[0]->enableVideoRecording();
     }
-    algorithm.runOneLoop(2000);
+    algorithm.runOneLoop(4000);
 
     if (iterationNumber % loggingInterval == 0) {
       algorithm.setVisualizationLevel(0);
