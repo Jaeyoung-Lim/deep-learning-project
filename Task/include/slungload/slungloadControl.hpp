@@ -151,7 +151,7 @@ class slungloadControl : public Task<Dtype,
       T_force = 0.0*T_force;
 
       du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_; // quadrotor acceleration
-      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
+//      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
       du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
       du_.tail(3) = gravity_; // Load Acceleration
 
@@ -162,13 +162,17 @@ class slungloadControl : public Task<Dtype,
       w_IXdt_ = w_I_ * this->controlUpdate_dt_;
       orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
       Math::MathFunc::normalizeQuat(orientation);
+
       q_.head(4) = orientation;
       q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
       q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
 
+      if ((q_.tail(3) - q_.segment<3>(4)).norm() > tether_length)
+        q_.tail(3) = q_.segment<3>(4) + tether_length * (q_.tail(3) - q_.segment<3>(4))/(q_.tail(3) - q_.segment<3>(4)).norm(); // Position Constraint
+
     } else {
       du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
-      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
+//      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
       du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
       du_.tail(3) = gravity_ - T_force / load_mass_ - 0.01*u_.tail(3).norm()*u_.tail(3)/u_.segment<3>(6).norm(); // Load Acceleration
 
@@ -212,11 +216,11 @@ class slungloadControl : public Task<Dtype,
     if (this->isViolatingBoxConstraint(state_tp1))
       termType = TerminationType::terminalState;
 
-    costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +
-        0.00005 * action_t.norm() +
-        0.00005 * u_.head(3).norm() +
-        0.00005 * u_.segment<3>(3).norm() +
-        0.00005 * u_.tail(3).norm();
+    costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +  // load position
+        0.00005 * action_t.norm() +                   // action
+        0.00005 * u_.head(3).norm() +                 // angular velocity
+        0.00005 * u_.segment<3>(3).norm() +           // linear velocity
+        0.00005 * u_.tail(3).norm();                  //
 
     // visualization
     if (this->visualization_ON_) {
