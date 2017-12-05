@@ -218,7 +218,7 @@ class slungloadControl : public Task<Dtype,
 
     costOUT = 0.004 * std::sqrt(q_.tail(3).norm()) +  // load position
         0.00005 * action_t.norm() +                   // action
-        0.00005 * u_.head(3).norm() +                 // angular velocity
+        0.00008 * u_.head(3).norm() +                 // angular velocity
         0.00005 * u_.segment<3>(3).norm() +           // linear velocity
         0.00005 * u_.tail(3).norm();                  //
 
@@ -297,9 +297,9 @@ class slungloadControl : public Task<Dtype,
     /// initial state is random
     double oriF[4], posiF[3], angVelF[3], linVelF[3], loadPosF[3],loadVelF[3], tetherLength;
     rn_.template sampleOnUnitSphere<4>(oriF);
-    rn_.template sampleInUnitSphere<3>(posiF);
-    rn_.template sampleInUnitSphere<3>(angVelF);
-    rn_.template sampleInUnitSphere<3>(linVelF);
+    rn_.template sampleVectorInNormalUniform<3>(posiF);
+    rn_.template sampleVectorInNormalUniform<3>(angVelF);
+    rn_.template sampleVectorInNormalUniform<3>(linVelF);
     rn_.template sampleInUnitSphere<3>(loadPosF);
     rn_.template sampleVectorInNormalUniform<3>(loadVelF);
 
