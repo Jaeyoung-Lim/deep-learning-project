@@ -200,9 +200,6 @@ class slungloadControl : public Task<Dtype,
 
     // visualization
     if (this->visualization_ON_) {
-      logger->appendData("Quadrotor Position", position.data());
-      logger->appendData("Load Position", load_position.data());
-
       updateVisualizationFrames();
       visualizer_.drawWorld(visualizeFrame, position, orientation, load_position);
       double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
