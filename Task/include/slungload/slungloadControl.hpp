@@ -196,7 +196,7 @@ class slungloadControl : public Task<Dtype,
         0.00005 * action_t.norm() +                   // action
         0.00008 * u_.head(3).norm() +                 // angular velocity
         0.00005 * u_.segment<3>(3).norm() +           // linear velocity
-        0.00005 * u_.tail(3).norm();                  //
+        0.00000 * u_.tail(3).norm();                  //
 
     // visualization
     if (this->visualization_ON_) {
