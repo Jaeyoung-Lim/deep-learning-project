@@ -5,7 +5,7 @@ namespace rai {
 namespace Vis {
 
 slungload_Visualizer::slungload_Visualizer() :
-    graphics(600, 450),
+    graphics(1280, 720),
     quadrotor(0.3),
     load(0.03),
     Target(0.055),
@@ -30,7 +30,7 @@ slungload_Visualizer::slungload_Visualizer() :
   //graphics.setBackgroundColor(1, 1, 1, 1);
 
   Eigen::Vector3d relPos;
-  relPos << -3, 0, 0;
+  relPos << -3, 0, 1;
   std::vector<float> pos = {-100, 0, 0}, spec = {0.7, 0.7, 0.7}, amb = {0.7, 0.7, 0.7}, diff = {0.7, 0.7, 0.7};
 
   rai_graphics::LightProp lprop;
