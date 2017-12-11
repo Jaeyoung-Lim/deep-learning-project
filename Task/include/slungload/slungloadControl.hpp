@@ -76,12 +76,12 @@ class slungloadControl : public Task<Dtype,
     State upperStateBound, lowerStateBound;
     upperStateBound << 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, //Rotation Matrix
                         3.0, 3.0, 3.0, //Quad Position
-                        M_PI*3./8., M_PI*3./8., tether_length, //Load State Position
+                        5.0, 5.0, 5.0, //Load State Position
                         5.0, 5.0, 5.0, //Quad Angular Velocity
                         6.0, 6.0, 6.0, //Quad Linear Velocity
                         6.0, 6.0, 6.0; //Load State Velocity
     lowerStateBound = -upperStateBound;
-    lowerStateBound(15) = 0.3*tether_length;
+
     this->setBoxConstraints(lowerStateBound, upperStateBound);
     transsThrust2GenForce << 0, 0, length_, -length_,
         -length_, length_, 0, 0,
@@ -145,52 +145,28 @@ class slungloadControl : public Task<Dtype,
 
     load_direction = load_position - position;
     Position direction = (1 /load_direction.norm())* load_direction;
-    T_force = load_mass_ * (gravity_ + du_.tail(3)).norm() * direction;
 
-    if(load_direction.norm() < tether_length){
-      T_force = 0.0*T_force;
+    if(load_direction.norm() < tether_length) T_force = 0.0*T_force;
+    else T_force = load_mass_ * (gravity_ + du_.tail(3)).norm() * direction;
 
-      du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_; // quadrotor acceleration
-//      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
-      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-      du_.tail(3) = gravity_; // Load Acceleration
+    du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
+    du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
+    du_.tail(3) = gravity_ - T_force / load_mass_ - 0.01*u_.tail(3).norm()*u_.tail(3)/u_.segment<3>(6).norm(); // Load Acceleration
 
-      //Integrate states
-      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
+    //Integrate states
+    u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
 
-      w_I_ = u_.head(3);
-      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-      Math::MathFunc::normalizeQuat(orientation);
+    w_I_ = u_.head(3);
+    w_IXdt_ = w_I_ * this->controlUpdate_dt_;
+    orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
+    Math::MathFunc::normalizeQuat(orientation);
+    q_.head(4) = orientation;
+    q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
+    q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
 
-      q_.head(4) = orientation;
-      q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
-      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
 
-      if ((q_.tail(3) - q_.segment<3>(4)).norm() > tether_length)
-        q_.tail(3) = q_.segment<3>(4) + tether_length * (q_.tail(3) - q_.segment<3>(4))/(q_.tail(3) - q_.segment<3>(4)).norm(); // Position Constraint
-
-    } else {
-      du_.segment<3>(3) = (R_ * B_force) / mass_ + gravity_ + T_force; // quadrotor acceleration
-//      du_.segment<3>(3) = 0.0*du_.segment<3>(3); // quadrotor acceleration
-      du_.head(3) = R_ * (inertiaInv_ * (B_torque - w_B_.cross(inertia_ * w_B_))); //acceleration by inputs
-      du_.tail(3) = gravity_ - T_force / load_mass_ - 0.01*u_.tail(3).norm()*u_.tail(3)/u_.segment<3>(6).norm(); // Load Acceleration
-
-      //Integrate states
-      u_ += du_ * this->controlUpdate_dt_; //velocity after timestep
-
-      //Velocity Constraint
-
-      w_I_ = u_.head(3);
-      w_IXdt_ = w_I_ * this->controlUpdate_dt_;
-      orientation = Math::MathFunc::boxplusI_Frame(orientation, w_IXdt_);
-      Math::MathFunc::normalizeQuat(orientation);
-      q_.head(4) = orientation;
-      q_.segment<3>(4) = q_.segment<3>(4) + u_.segment<3>(3) * this->controlUpdate_dt_; //Quad Position
-      q_.tail(3) = q_.tail(3) + u_.tail(3) * this->controlUpdate_dt_; // Load Posittion
-
+    if ((q_.tail(3) - q_.segment<3>(4)).norm() > tether_length)
       q_.tail(3) = q_.segment<3>(4) + tether_length * (q_.tail(3) - q_.segment<3>(4))/(q_.tail(3) - q_.segment<3>(4)).norm(); // Position Constraint
-    }
 
 
     if (std::isnan(orientation.norm())) {
@@ -220,11 +196,10 @@ class slungloadControl : public Task<Dtype,
         0.00005 * action_t.norm() +                   // action
         0.00008 * u_.head(3).norm() +                 // angular velocity
         0.00005 * u_.segment<3>(3).norm() +           // linear velocity
-        0.00005 * u_.tail(3).norm();                  //
+        0.00000 * u_.tail(3).norm();                  //
 
     // visualization
     if (this->visualization_ON_) {
-
       updateVisualizationFrames();
       visualizer_.drawWorld(visualizeFrame, position, orientation, load_position);
       double waitTime = std::max(0.0, this->controlUpdate_dt_ / realTimeRatio - watch.measure("sim", true));
