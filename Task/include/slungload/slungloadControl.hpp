@@ -295,7 +295,7 @@ class slungloadControl : public Task<Dtype,
     load_direction = rai::Math::MathFunc::quatToRotMat(orientation)*loadPosition;
 
     q_ << orientation, position, position + load_direction;
-    u_ << angularVelocity, linearVelocity, linearVelocity;
+    u_ << angularVelocity, linearVelocity, loadVelocity;
 
   }
 
@@ -322,8 +322,8 @@ class slungloadControl : public Task<Dtype,
     orientation = Math::MathFunc::rotMatToQuat(R_);
     q_.head(4) = orientation;
     q_.segment<3>(4) = state.segment(9, 3) / positionScale_;
-
-
+    load_state_v = state.segment<3>(7);
+    
     q_.tail(3) << load_state_v(2)*sin(load_state_v(0)),
                   load_state_v(2)*sin(load_state_v(1)),
                   -load_state_v(2)*std::sqrt(1 - sin(load_state_v(0))*sin(load_state_v(0)) - sin(load_state_v(1)) *sin(load_state_v(1)));
@@ -331,7 +331,6 @@ class slungloadControl : public Task<Dtype,
     u_.head(3) = state.segment(12, 3) / angVelScale_;
     u_.segment<3>(3) = state.segment(15, 3) / linVelScale_;
     u_.tail(3) = state.tail(3) * linVelScale_;
-    du_ = 0.0*du_;
   }
 
   void getState(State &state) {
