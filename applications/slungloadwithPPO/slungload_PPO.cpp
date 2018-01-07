@@ -14,7 +14,7 @@
 #include "rai/function/tensorflow/ValueFunction_TensorFlow.hpp"
 
 // algorithm
-#include "rai/algorithm/TRPO_gae.hpp"
+#include "rai/algorithm/PPO.hpp"
 
 // acquisitor
 #include "rai/experienceAcquisitor/TrajectoryAcquisitor_Parallel.hpp"
@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
   Acquisitor acquisitor;
 
   ////////////////////////// Algorithm ////////////////////////////////
-  rai::Algorithm::TRPO_gae<Dtype, StateDim, ActionDim>
-      algorithm(taskVector, &vfunction, &policy, noiseVector, &acquisitor, 0.97, 0, 0, 1);
+  rai::Algorithm::PPO<Dtype, StateDim, ActionDim>
+      algorithm(taskVector, &vfunction, &policy, noiseVector, &acquisitor, 0.97, 0, 0, 10, 30);
   algorithm.setVisualizationLevel(0);
 
   /////////////////////// Plotting properties ////////////////////////
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   constexpr int loggingInterval = 100;
 
   ////////////////////////// Learning /////////////////////////////////
-  for (int iterationNumber = 0; iterationNumber < 2000; iterationNumber++) {
+  for (int iterationNumber = 0; iterationNumber < 501; iterationNumber++) {
     rai::Utils::logger->appendData("process time", rai::Utils::timer->getGlobalElapsedTimeInMin());
     LOG(INFO) << iterationNumber << "th loop";
     if (iterationNumber % loggingInterval == 0) {

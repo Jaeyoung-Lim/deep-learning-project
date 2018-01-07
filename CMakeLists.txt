@@ -25,6 +25,7 @@ add_subdirectory(applications/quadrotorwithPPO)
 
 add_subdirectory(Task/src/slungload)
 add_subdirectory(applications/slungloadwithTRPO)
+add_subdirectory(applications/slungloadwithPPO)
 
 add_subdirectory(applications/DIY)
 
