@@ -17,8 +17,7 @@
 #include "rai/algorithm/PPO.hpp"
 
 // acquisitor
-#include "rai/experienceAcquisitor/TrajectoryAcquisitor_MultiThreadBatch.hpp"
-#include "rai/experienceAcquisitor/TrajectoryAcquisitor_SingleThreadBatch.hpp"
+#include "rai/experienceAcquisitor/TrajectoryAcquisitor_Parallel.hpp"
 
 using namespace std;
 using namespace boost;
@@ -35,8 +34,9 @@ using Noise = rai::Noise::NormalDistributionNoise<Dtype, ActionDim>;
 using NoiseCovariance = Eigen::Matrix<Dtype, ActionDim, ActionDim>;
 using Policy_TensorFlow = rai::FuncApprox::StochasticPolicy_TensorFlow<Dtype, StateDim, ActionDim>;
 using Vfunction_TensorFlow = rai::FuncApprox::ValueFunction_TensorFlow<Dtype, StateDim>;
-using Acquisitor = rai::ExpAcq::TrajectoryAcquisitor_MultiThreadBatch<Dtype, StateDim, ActionDim>;
-#define nThread 1
+using Acquisitor = rai::ExpAcq::TrajectoryAcquisitor_Parallel<Dtype, StateDim, ActionDim>;
+
+#define nThread 10
 
 int main(int argc, char *argv[]) {
 
@@ -57,8 +57,6 @@ int main(int argc, char *argv[]) {
   }
 
   ////////////////////////// Define Function approximations //////////
-//  Vfunction_TensorFlow vfunction("cpu", "MLP", "tanh 3e-3 18 128 128 1", 1e-3);
-//  Policy_TensorFlow policy("cpu", "MLP", "tanh 3e-3 18 128 128 4", 1e-3);
   Vfunction_TensorFlow vfunction("gpu,0", "MLP", "relu 3e-3 18 128 128 1", 1e-3);
   Policy_TensorFlow policy("gpu,0", "MLP", "relu 3e-3 18 128 128 4", 1e-3);
 
@@ -88,7 +86,7 @@ int main(int argc, char *argv[]) {
   constexpr int loggingInterval = 50;
 
   ////////////////////////// Learning /////////////////////////////////
-  for (int iterationNumber = 0; iterationNumber < 300; iterationNumber++) {
+  for (int iterationNumber = 0; iterationNumber < 301; iterationNumber++) {
     rai::Utils::logger->appendData("process time", rai::Utils::timer->getGlobalElapsedTimeInMin());
     LOG(INFO) << iterationNumber << "th loop";
     if (iterationNumber % loggingInterval == 0) {

@@ -27,8 +27,7 @@
 #include "rai/algorithm/TRPO_gae.hpp"
 
 // acquisitor
-#include "rai/experienceAcquisitor/TrajectoryAcquisitor_MultiThreadBatch.hpp"
-#include "rai/experienceAcquisitor/TrajectoryAcquisitor_SingleThreadBatch.hpp"
+#include "rai/experienceAcquisitor/TrajectoryAcquisitor_Parallel.hpp"
 
 using namespace std;
 using namespace boost;
@@ -45,7 +44,8 @@ using Noise = rai::Noise::NormalDistributionNoise<Dtype, ActionDim>;
 using NoiseCovariance = Eigen::Matrix<Dtype, ActionDim, ActionDim>;
 using Policy_TensorFlow = rai::FuncApprox::StochasticPolicy_TensorFlow<Dtype, StateDim, ActionDim>;
 using Vfunction_TensorFlow = rai::FuncApprox::ValueFunction_TensorFlow<Dtype, StateDim>;
-using Acquisitor = rai::ExpAcq::TrajectoryAcquisitor_MultiThreadBatch<Dtype, StateDim, ActionDim>;
+using Acquisitor = rai::ExpAcq::TrajectoryAcquisitor_Parallel<Dtype, StateDim, ActionDim>;
+
 #define nThread 1
 
 int main(int argc, char *argv[]) {
