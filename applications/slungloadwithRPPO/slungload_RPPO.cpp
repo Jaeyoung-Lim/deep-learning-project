@@ -52,10 +52,9 @@ int main(int argc, char *argv[]) {
     taskVector.push_back(&task);
   }
   ////////////////////////// Define Function approximations //////////
-  PolicyValue_TensorFlow policy("gpu,0", "LSTM_merged", "relu 1e-3 12 128 / 128 128 4", 1e-6);
+  PolicyValue_TensorFlow policy("gpu,0", "LSTM_merged", "relu 1e-3 12 128 / 128 64 4", 1e-4);
   policy.setLearningRateDecay(0.99,50);
   policy.setMaxGradientNorm(0.05);
-  policy.loadParam("/home/joonho/Documents/param/policy_1000_07012018.txt");
 
   ////////////////////////// Define Noise Model //////////////////////
   Dtype Stdev = 1;
@@ -93,7 +92,7 @@ int main(int argc, char *argv[]) {
 
   ////////////////////////// Learning /////////////////////////////////
   constexpr int loggingInterval =50;
-  int iteration = 1001;
+  int iteration = 501;
 
   for (int iterationNumber = 0; iterationNumber < iteration; iterationNumber++) {
     LOG(INFO) << iterationNumber << "th Iteration";

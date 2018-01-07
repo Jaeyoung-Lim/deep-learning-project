@@ -98,11 +98,11 @@ void slungload_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
                   xAxis(2), yAxis(2), zAxis(2);
 
   tetherPose.topLeftCorner(3,3) = tetherRotmat;
-  tetherPose.topRightCorner(3,1) = quadPos + 1./3.*(loadPos - quadPos) -0.15*(loadPos - quadPos);
+  tetherPose.topRightCorner(3,1) = quadPos + 1./3.*(loadPos - quadPos) + 0.15*(quadPos - loadPos);
   tether1.setPose(tetherPose);
-  tetherPose.topRightCorner(3,1) = quadPos + 2./3.*(loadPos - quadPos)-0.15*(loadPos - quadPos);
+  tetherPose.topRightCorner(3,1) = quadPos + 2./3.*(loadPos - quadPos) + 0.15*(quadPos - loadPos);
   tether2.setPose(tetherPose);
-  tetherPose.topRightCorner(3,1) = loadPos - 0.15*(loadPos - quadPos);
+  tetherPose.topRightCorner(3,1) = loadPos + 0.15*(quadPos - loadPos);
   tether3.setPose(tetherPose);
 
   Target.setPos(end);
