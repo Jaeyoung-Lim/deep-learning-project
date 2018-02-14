@@ -30,4 +30,8 @@ add_subdirectory(applications/slungloadwithRPPO)
 
 add_subdirectory(applications/DIY)
 
+add_subdirectory(Task/src/monocopter)
+add_subdirectory(applications/monocopterwithTRPO)
+
+
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/applications/${RAI_APP})
