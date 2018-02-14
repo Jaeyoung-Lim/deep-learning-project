@@ -80,10 +80,10 @@ class MonocopterControl : public Task<Dtype,
                         6.0, 6.0, 6.0;
     lowerStateBound = -upperStateBound;
     this->setBoxConstraints(lowerStateBound, upperStateBound);
-    transsThrust2GenForce << 0, 0, length_, -length_,
-        -length_, length_, 0, 0,
-        dragCoeff_, dragCoeff_, -dragCoeff_, -dragCoeff_,
-        1, 1, 1, 1;
+    transsThrust2GenForce << 0, 0, 0, 0,
+                            -length_, 0, 0, 0,
+                            dragCoeff_, 0, 0, 0,
+                            1, 0, 0, 0;
     transsThrust2GenForceInv = transsThrust2GenForce.inverse();
     targetPosition.setZero();
   }
@@ -115,18 +115,18 @@ class MonocopterControl : public Task<Dtype,
     B_torque = actionGenForce.segment(0, 3); //Moment input
     B_force << 0.0, 0.0, actionGenForce(3); // Thrust vector in {B}
 
-    //Control input from PD stabilization
-    double kp_rot = -0.2, kd_rot = -0.06;
-    Torque fbTorque_b;
-
-    if (angle > 1e-6)
-      fbTorque_b = kp_rot * angle * (R_.transpose() * orientation.tail(3))
-          / std::sin(angle) + kd_rot * (R_.transpose() * u_.head(3));
-    else
-      fbTorque_b = kd_rot * (R_.transpose() * u_.head(3));
-    fbTorque_b(2) = fbTorque_b(2) * 0.15; //Lower yaw gains
-
-    B_torque += fbTorque_b; //Sum of torque inputs
+//    //Control input from PD stabilization
+//    double kp_rot = -0.2, kd_rot = -0.06;
+//    Torque fbTorque_b;
+//
+//    if (angle > 1e-6)
+//      fbTorque_b = kp_rot * angle * (R_.transpose() * orientation.tail(3))
+//          / std::sin(angle) + kd_rot * (R_.transpose() * u_.head(3));
+//    else
+//      fbTorque_b = kd_rot * (R_.transpose() * u_.head(3));
+//    fbTorque_b(2) = fbTorque_b(2) * 0.15; //Lower yaw gains
+//
+//    B_torque += fbTorque_b; //Sum of torque inputs
     B_force(2) += mass_ * 9.81; //Sum of thrust inputs
 
     // clip inputs
@@ -286,7 +286,7 @@ class MonocopterControl : public Task<Dtype,
     orientation << double(std::abs(oriF[0])), double(oriF[1]), double(oriF[2]), double(oriF[3]);
     rai::Math::MathFunc::normalizeQuat(orientation);
     position << double(posiF[0])*2., double(posiF[1])*2., double(posiF[2])*2.;
-    angularVelocity << double(angVelF[0]), double(angVelF[1]), double(angVelF[2]);
+    angularVelocity << double(angVelF[0]), double(angVelF[1]), double(angVelF[2])+1.0;
     linearVelocity << double(linVelF[0]), double(linVelF[1]), double(linVelF[2]);
 
     q_ << orientation, position;
