@@ -20,8 +20,10 @@ Monocopter_Visualizer::Monocopter_Visualizer() :
   graphics.addBackground(&background);
   //graphics.setBackgroundColor(1, 1, 1, 1);
 
-  Eigen::Vector3d relPos;
+  Eigen::Vector3d relPos, targetPos;
   relPos << -3, 0, 0;
+  targetPos << 0.0, 0.0, 0.0;
+  Target.setPos(targetPos);
   std::vector<float> pos = {-100, 0, 0}, spec = {0.7, 0.7, 0.7}, amb = {0.7, 0.7, 0.7}, diff = {0.7, 0.7, 0.7};
 
   rai_graphics::LightProp lprop;
@@ -45,7 +47,6 @@ Monocopter_Visualizer::~Monocopter_Visualizer() {
 
 void Monocopter_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt) {
   Eigen::Vector3d pos;
-  Eigen::Vector3d end;
   HomogeneousTransform quadPose;
   RotationMatrix rotmat;
 
@@ -56,13 +57,10 @@ void Monocopter_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &
   quadPose.topRightCorner(3, 1) = quadPos;
   quadPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(quadAtt);
 
-  end = rotmat * end;
-
   quadPose = quadPose * defaultPose_;
 
   quadrotor.setPose(quadPose);
   quadrotor.spinRotors();
-  Target.setPos(end);
 
 }
 
