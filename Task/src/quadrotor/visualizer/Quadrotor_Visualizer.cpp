@@ -23,6 +23,9 @@ Quadrotor_Visualizer::Quadrotor_Visualizer() :
   Eigen::Vector3d relPos;
   relPos << -3, 0, 0;
   std::vector<float> pos = {-100, 0, 0}, spec = {0.7, 0.7, 0.7}, amb = {0.7, 0.7, 0.7}, diff = {0.7, 0.7, 0.7};
+  Eigen::Vector3d targetPos;
+  targetPos << 0.0, 0.0, 0.0;
+  Target.setPos(targetPos);
 
   rai_graphics::LightProp lprop;
   lprop.amb_light = amb;
@@ -37,6 +40,7 @@ Quadrotor_Visualizer::Quadrotor_Visualizer() :
   graphics.setLightProp(lprop);
   graphics.start();
 
+
 }
 
 Quadrotor_Visualizer::~Quadrotor_Visualizer() {
@@ -45,7 +49,6 @@ Quadrotor_Visualizer::~Quadrotor_Visualizer() {
 
 void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &quadPos, Quaternion &quadAtt) {
   Eigen::Vector3d pos;
-  Eigen::Vector3d end;
   HomogeneousTransform quadPose;
   RotationMatrix rotmat;
 
@@ -56,13 +59,11 @@ void Quadrotor_Visualizer::drawWorld(HomogeneousTransform &bodyPose, Position &q
   quadPose.topRightCorner(3, 1) = quadPos;
   quadPose.topLeftCorner(3,3) = rai::Math::MathFunc::quatToRotMat(quadAtt);
 
-  end = rotmat * end;
 
   quadPose = quadPose * defaultPose_;
 
   quadrotor.setPose(quadPose);
   quadrotor.spinRotors();
-  Target.setPos(end);
 
 }
 
